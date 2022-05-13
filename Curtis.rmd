@@ -1,0 +1,264 @@
+---
+title: "Curtis Analysis"
+output: html_document
+---
+```{r Preping_Dataframes}
+library(tidyverse)
+library(lubridate)
+
+`%!in%` <- Negate(`%in%`)
+
+## Reading in 2021 vegetation data
+veg_2021 <- as_tibble(read.csv(
+  "/Users/isaacbailey/Library/CloudStorage/OneDrive-UW-Madison/Research/Curtis_Prairie_DA/Curtis_Analysis/Final_2021_Curtis_Sample_04062022.csv", header = TRUE))
+names(veg_2021)[1] <- "Plot"
+
+# Reclassifying total cover into single integer
+veg_2021$Total_Cover <- replace(veg_2021$Total_Cover, veg_2021$Total_Cover == "\"1-25\"", 12.5)
+veg_2021$Total_Cover <- replace(veg_2021$Total_Cover, veg_2021$Total_Cover == "\"26-50\"", 37.5)
+veg_2021$Total_Cover <- replace(veg_2021$Total_Cover, veg_2021$Total_Cover == "\"51-75\"", 62.5)
+veg_2021$Total_Cover <- replace(veg_2021$Total_Cover, veg_2021$Total_Cover == "\"76-95\"", 85.5)
+veg_2021$Total_Cover <- replace(veg_2021$Total_Cover, veg_2021$Total_Cover == "\"96-100\"", 98)
+veg_2021$Total_Cover <- as.numeric(veg_2021$Total_Cover)
+
+# Reclassifying species cover into single integer
+veg_2021$Sp_Cover <- replace(veg_2021$Sp_Cover, veg_2021$Sp_Cover == "\"<1\"", 0.5)
+veg_2021$Sp_Cover <- replace(veg_2021$Sp_Cover, veg_2021$Sp_Cover == "\"1-5\"", 2.5)
+veg_2021$Sp_Cover <- replace(veg_2021$Sp_Cover, veg_2021$Sp_Cover == "\"6-25\"", 15.5)
+veg_2021$Sp_Cover <- replace(veg_2021$Sp_Cover, veg_2021$Sp_Cover == "\"26-50\"", 38)
+veg_2021$Sp_Cover <- replace(veg_2021$Sp_Cover, veg_2021$Sp_Cover == "\"51-75\"", 63)
+veg_2021$Sp_Cover <- replace(veg_2021$Sp_Cover, veg_2021$Sp_Cover == "\"76-95\"", 85.5)
+veg_2021$Sp_Cover <- replace(veg_2021$Sp_Cover, veg_2021$Sp_Cover == "\"96-100\"", 98)
+veg_2021$Sp_Cover <- as.numeric(veg_2021$Sp_Cover)
+
+# Reclassifying dates
+veg_2021$Date <- mdy(veg_2021$Date)
+
+# Clean out canopy cover
+veg_2021 %>% filter(!is.na(Canopy_Cover)) %>% filter(is.na(Sp_Cover)) -> just_canopy
+veg_2021 %>% anti_join(just_canopy) -> veg_2021
+
+## Reading in 2002 data
+veg_snyder <- as_tibble(read.csv("/Users/isaacbailey/Library/CloudStorage/OneDrive-UW-Madison/Research/Curtis_Prairie_DA/Curtis_Analysis/IB_and_MC_Combo_11_10_21 - 2002_Data.csv", header = TRUE))
+
+# Reading in environmental data
+cross_walk <- as_tibble(read.csv("/Users/isaacbailey/Library/CloudStorage/OneDrive-UW-Madison/Research/Curtis_Prairie_DA/Curtis_Analysis/Snyder_crosswalk.csv", header = TRUE))
+
+# creating snyder dataframe
+ds <- data.frame(veg_snyder)
+ds <- merge(ds, cross_walk, by = "X2021_Plot")
+
+# creating 2021 dataframe
+dmci <- data.frame(veg_2021$Plot, veg_2021$Scientific_name)
+dmci <- merge(dmci, cross_walk, by.x = "veg_2021.Plot", by.y = "X2021_Plot")
+
+# Creating dataframe without rare species
+
+nr_dmci <- veg_2021
+richness_by_spec <- nr_dmci %>% group_by(Scientific_name) %>% tally()
+richness_by_plot <- nr_dmci %>% group_by(Plot) %>% tally()
+nr_spec <- filter(richness_by_spec, n > 10)
+nr_dmci <- filter(nr_dmci, Scientific_name %in% nr_spec$Scientific_name)
+
+```
+
+=======================================================================
+```{r variance_of_species_richness_and_kriging}
+
+# For ecological analyses
+library(vegan)
+
+# Spatial data processing
+library(sp)
+library(sf)
+
+# For the geostats
+library(automap)
+library(gstat)
+
+# For mapping
+library(patchwork)
+library(viridis)
+
+# Setting up dataframes
+
+spat_df <- as.tibble(cbind(dmci$veg_2021.Plot, dmci$Easting, dmci$Northing, dmci$NumSpec))
+spat_df <- aggregate(cbind(V2, V3, V4) ~ V1, data = spat_df, FUN = mean)
+
+ggplot(data = spat_df, aes_(x = spat_df$V2, y = spat_df$V3, color = spat_df$V4)) +
+  geom_point(size = 2) +
+  scale_fill_viridis(option = "A") +
+  labs(title = "Species Richness Per Plot in 2002", x="Longitude", y = "Latitude")+
+  theme_bw()
+
+ggplot(data = spat_df, aes_(x = spat_df$V2, y = spat_df$V3, color = richness_by_plot$n)) +
+  geom_point(size = 2) +
+  scale_fill_viridis(option = "A") +
+  labs(title = "Species Richness Per Plot in 2021", x="Longitude", y = "Latitude")+
+  theme_bw()
+
+spat_sf <- st_as_sf(spat_df, coords = c("V2", "V3"), crs = 3069) %>%
+  cbind(st_coordinates(.))
+
+spat_v_snyder <- variogram(
+  V4 ~ 1,
+  as(spat_sf, "Spatial")
+)
+spat_v_dmci <- variogram(
+  richness_by_plot$n ~ 1,
+  as(spat_sf, "Spatial")
+)
+
+spat_v.fit_snyder <- fit.variogram(spat_v_snyder, vgm(c("Exp", "Mat", "Sph")), fit.kappa = TRUE, fit.method = 7)
+plot(variogramLine(vgm(17.68, "Mat", 72.11875, kappa = 1.6), 1000), type = "l")
+
+spat_v.fit_dmci <- fit.variogram(spat_v_dmci, vgm(c("Exp", "Mat", "Sph")), fit.kappa = TRUE, fit.method = 7)
+plot(variogramLine(vgm(11.89528, "Sph", 401.7893, kappa = 0.5), 1000), type = "l")
+
+grd_1_sf <- spat_sf %>%
+  st_bbox() %>%
+  st_as_sfc() %>%
+  st_make_grid(
+    cellsize = c(5, 5),
+    what = "centers"
+  ) %>%
+  st_as_sf() %>%
+  cbind(., st_coordinates(.))
+
+grd_1_sp <- as(grd_1_sf, "Spatial")
+gridded(grd_1_sp) <- TRUE
+grd_1_sp <- as(grd_1_sp, "SpatialPixels")
+
+SK_rich_snyder <- krige(
+  V4 ~ 1,
+  as(spat_sf, "Spatial"),
+  grd_1_sp,
+  model = spat_v.fit_snyder
+)
+
+SK_rich_dmci <- krige(
+  richness_by_plot$n ~ 1,
+  as(spat_sf, "Spatial"),
+  grd_1_sp,
+  model = spat_v.fit_dmci
+)
+
+image(SK_rich_snyder)
+image(SK_rich_dmci)
+
+
+```
+```{r building_spatial_matrices_and_modeling_jaccard_distances}
+library(betapart)
+
+# pulling in data from data frames and filtering missing plots
+dmci %>% filter(veg_2021.Plot != 905) -> spat_dmci
+veg_snyder %>% filter(X2021_Plot != 1004) -> spat_snyder
+
+# plot numbers and species for 2021 data
+dmci_plot <- as.factor(spat_dmci$veg_2021.Plot)
+dmci_spec <- as.factor(spat_dmci$veg_2021.Scientific_name)
+
+# plot numbers and species for 2002 data
+snyder_plot <- as.factor(spat_snyder$X2021_Plot)
+snyder_spec <- as.factor(spat_snyder$X2021_Taxon)
+
+# creating site/species matrix
+dmci_mat <- table(dmci_plot, dmci_spec)
+
+# corrects for values greater than 1 in 2021 matrix
+dmci_mat[dmci_mat > 1] <- 1
+
+# cereating site/species matrix for 2002 data
+snyder_mat <- table(snyder_plot, snyder_spec)
+
+# corrects for values greater than 1 in 2002 matrix
+snyder_mat[snyder_mat > 1] <- 1
+
+# creates a list of species found both sampling years
+comb_spec <- unique(append(dmci_spec, snyder_spec))
+
+# creates a matrix to append 2002 species not found in 2021 to 2021 species/site matrix
+subset(comb_spec, comb_spec %!in% dmci_spec) -> ni_dmci
+addon_dmci <- matrix(0,length(unique(dmci_plot)),length(ni_dmci))
+colnames(addon_dmci) <- (ni_dmci)
+row.names(addon_dmci) <- unique(dmci_plot)
+
+# appends addon matrix to 2021 matrix
+dmci_mat <- cbind(dmci_mat, addon_dmci)
+
+# creates a matrix to append 2021 species not found in 2002 to 2002 species/site matrix
+subset(comb_spec, comb_spec %!in% snyder_spec) -> ni_snyder
+addon_snyder <- matrix(0,length(unique(snyder_plot)),length(ni_snyder))
+colnames(addon_snyder) <- (ni_snyder)
+row.names(addon_snyder) <- unique(snyder_plot)
+
+# appends addon to 2002 matrix
+snyder_mat <- cbind(snyder_mat, addon_snyder)
+
+# reorders columns in matrices so that they are the same for betapart
+dmci_mat <- dmci_mat[,order(colnames(dmci_mat))]
+snyder_mat <- snyder_mat[,order(colnames(snyder_mat))]
+
+# turns both matrices into betapart objects
+beta_dmci_mat <- betapart.core(dmci_mat)
+beta_snyder_mat <- betapart.core(snyder_mat)
+
+# runs jaccard index between both times
+jaccard <- beta.temp(beta_dmci_mat,beta_snyder_mat, "jaccard")
+
+jaccard_spat_df <- data.frame(cbind(jaccard$beta.jac,
+aggregate(cbind(spat_dmci$Northing, spat_dmci$Easting), list(spat_dmci$veg_2021.Plot), FUN = mean)))
+
+ggplot(data = jaccard_spat_df, aes_(x = jaccard_spat_df$V2, y = jaccard_spat_df$V1, color = jaccard_spat_df$jaccard.beta.jac)) +
+  geom_point(size = 2) +
+  scale_color_viridis(option = "H", direction = -1) +
+  labs(title = "Jaccard Distance Between Years", x="Longitude", y = "Latitude")+
+  theme_gray()
+
+
+
+```
+===================================================================================================================
+This chunk trims a phylogenetic tree for the species in our sample from the tree of Wisconsin flora from Spalink, Daniel et al. (2019). Not listed in the tree are the edge lengths for each branch. These are stored, but not graphically represented. As it stands now, this tree excludes individuals not identified to species,and some  This will be used to calculate PD, NTI, and NRI later in the document.
+
+```{r Phylogeny}
+
+library(ape)
+
+#sort into distinct species
+keep_species <- distinct(veg_2021, Scientific_name)
+
+#reformat of species list for tree pruning
+keep_species$Scientific_name <- as.character(keep_species$Scientific_name)
+keep <- gsub(" ", "_", keep_species$Scientific_name)
+
+#reading in large phylogenetic tree
+bigtree <- read.tree("/Users/isaacbailey/Library/CloudStorage/OneDrive-UW-Madison/Research/Curtis_Prairie_DA/GC.ultrametric_genera_constrained.tre")
+
+#finding taxa to remove
+setdiff(bigtree$tip.label, keep) -> remove_taxa
+
+#tree pruning
+pruned.tree <- drop.tip(bigtree, remove_taxa)
+
+#List species in tree
+pruned.tree$tip.label
+
+#writing out tree
+write.tree(pruned.tree, file = '/Users/isaacbailey/Library/CloudStorage/OneDrive-UW-Madison/Research/Curtis_Prairie_DA/Curtis_Analysis/curtis.tre')
+
+#plot tree
+plot.phylo(pruned.tree, align.tip.label = TRUE)
+
+```
+
+===================================================================================================================
+
+
+```{r}
+
+```
+```{r}
+
+```
