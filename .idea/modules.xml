@@ -2,7 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$APPLICATION_CONFIG_DIR$/projects/Curtis_analysis_6/9/.idea/9.iml" filepath="$APPLICATION_CONFIG_DIR$/projects/Curtis_analysis_6/9/.idea/9.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Curtis/.idea/Curtis.iml" filepath="$PROJECT_DIR$/../Curtis/.idea/Curtis.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/Curtis_Analysis.iml" filepath="$PROJECT_DIR$/.idea/Curtis_Analysis.iml" />
+      <module fileurl="file://$APPLICATION_CONFIG_DIR$/projects/workspace/.idea/workspace.iml" filepath="$APPLICATION_CONFIG_DIR$/projects/workspace/.idea/workspace.iml" />
     </modules>
   </component>
 </project>

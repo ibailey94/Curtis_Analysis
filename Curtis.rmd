@@ -62,7 +62,7 @@ nr_dmci <- filter(nr_dmci, Scientific_name %in% nr_spec$Scientific_name)
 
 ```
 
-=======================================================================
+
 ```{r variance_of_species_richness_and_kriging}
 
 # For ecological analyses
@@ -79,6 +79,7 @@ library(gstat)
 # For mapping
 library(patchwork)
 library(viridis)
+library(ggplot2)
 
 # Setting up dataframes
 
@@ -100,9 +101,7 @@ ggplot(data = spat_df, aes_(x = spat_df$V2, y = spat_df$V3, color = richness_by_
 spat_sf <- st_as_sf(spat_df, coords = c("V2", "V3"), crs = 3069) %>%
   cbind(st_coordinates(.))
 
-spat_v_snyder <- variogram(
-  V4 ~ 1,
-  as(spat_sf, "Spatial")
+spat_v_snyder <- variogram(V4 ~ 1, as(spat_sf, "Spatial")
 )
 spat_v_dmci <- variogram(
   richness_by_plot$n ~ 1,
