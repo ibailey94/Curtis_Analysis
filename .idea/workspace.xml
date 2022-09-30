@@ -4,15 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fbd7660c-5b00-43ee-a421-f8fb786f825d" name="Default Changelist" comment="Update Curtis.rmd">
-      <change afterPath="$PROJECT_DIR$/Single_analysis.R" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/new_analysis_files/figure-html/variance_of_species_richness_and_kriging-1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/new_analysis_files/figure-html/variance_of_species_richness_and_kriging-2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/new_analysis_files/figure-html/variance_of_species_richness_and_kriging-3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/new_analysis_files/figure-html/variance_of_species_richness_and_kriging-4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/new_analysis_files/figure-html/variance_of_species_richness_and_kriging-5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/new_analysis_files/figure-html/variance_of_species_richness_and_kriging-6.png" afterDir="false" />
-    </list>
+    <list default="true" id="fbd7660c-5b00-43ee-a421-f8fb786f825d" name="Default Changelist" comment="Update Curtis.rmd" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -67,7 +59,7 @@
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
-    "settings.editor.selected.configurable": "preferences.pluginManager"
+    "settings.editor.selected.configurable": "org.jetbrains.r.configuration.RSettingsProjectConfigurable"
   },
   "keyToStringList": {
     "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
@@ -100,6 +92,7 @@
       <workItem from="1655005104052" duration="719000" />
       <workItem from="1655005893303" duration="2275000" />
       <workItem from="1655008225673" duration="6012000" />
+      <workItem from="1664561505508" duration="71000" />
     </task>
     <task id="LOCAL-00001" summary="Update Curtis.rmd">
       <created>1654986246282</created>
